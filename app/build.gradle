@@ -1,0 +1,296 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+//apply plugin:'com.cwl.plugin'
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        applicationId "com.cwl.gradleplugin"
+        minSdkVersion 17
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        config {
+            keyAlias 'key0'
+            keyPassword '123456'
+            storeFile file(projectDir.parent + '/test.jks')
+            storePassword '123456'
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
+    }
+
+    buildTypes {
+        release {
+//            signingConfig signingConfigs.config
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+
+        }
+    }
+
+//    flavorDimensions 'Sex'
+
+    //AbstractProductFlavor
+    productFlavors {
+        flavorDimensions 'Sex'
+
+        baidu {
+            dimension 'Sex'
+        }
+
+        google {
+            dimension 'Sex'
+            signingConfig signingConfigs.config
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation 'androidx.core:core-ktx:1.3.1'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'com.google.android.material:material:1.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
+    testImplementation 'junit:junit:4.+'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+}
+
+configurations{
+    myConfiguration{
+        description('my custom myConfiguration')
+        //project之外是否可见
+        visible(false)
+        //配置false，依赖不会过度
+//        transitive(false)
+//        canBeResolved(false)
+    }
+
+    //声明一个Configuration
+    myConfiguration2
+    //继承
+    myConfiguration2.extendsFrom(testImplementation)
+}
+dependencies {
+//    myConfiguration 'androidx.constraintlayout:constraintlayout:2.0.1'
+
+    myConfiguration('androidx.constraintlayout:constraintlayout:2.0.1'){
+        force = true
+        exclude module:'annotation'
+        exclude group:'androidx.lifecycle'
+    }
+}
+
+println '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
+configurations.getByName('myConfiguration').each {
+    println it
+}
+println '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
+task copyMyConfigurationDependencies(type: Copy){
+    from configurations.myConfiguration
+    into 'dep-cache'
+}
+
+
+//getRootProject() 根项目
+println(rootProject)
+
+println(rootDir)
+
+println(buildDir)
+
+println(parent)
+
+//获取当前 Project 及其子 Project 对象，返回值是一个 Set 集合
+println(allprojects)
+
+//获取当前 Project 下的所有子 Project 对象
+println(subprojects)
+
+//传入的map
+//apply(from:'xxx.gradle')
+
+//做一些project的依赖项配置
+configurations {
+//    all*.exclude group: '组名', module: '模块名'
+}
+
+//指定project 进行配置
+//project("xxx"){
+//
+//}
+
+ext.test1 = "test1"
+ext {
+    test2 = "test2"
+}
+println(test)
+println(test1)
+println(test2)
+
+println(file('build.gradle'))
+
+println(new File('/Users/zhao/OtherAndroidProjects/GradlePlugin/app/build.gradle'))
+
+files('build.gradle', '../build.gradle').each {
+    println(it)
+}
+
+//进行copy
+//copy {
+//    from('build.gradle')
+//    into('./copy')
+//}
+
+def customSpec = copySpec {
+    from("copy") {
+        //ant style
+        include('**/*.txt')
+        exclude('**/ex.txt')
+    }
+
+    into('./target')
+//    into('target')
+
+}
+
+copy {
+    //这里直接输出到当前目录,子项输出到当前目录下的target
+    //联合就是./target
+    into('.')
+    //将给定的spec作为子项
+    with(customSpec)
+}
+
+fileTree('../gradle') { FileTree fileTree -> //不写就是it 但没提示
+    //深度优先前序遍历
+    fileTree.visit { FileVisitDetails fileVisitDetails ->
+        println(fileVisitDetails.name)
+    }
+}
+
+//implementation fileTree(include: ['*.jar'], dir: 'libs') 就是fileTree的应用
+
+task deleteTask(type: Delete) {
+    group('test')
+    delete('./copy/build.gradle')
+}
+
+//通过 extends 关键字指定
+abstract class DeleteTask extends Delete {
+
+}
+
+DeleteTask deleteTaskExtend = tasks.create("deleteTaskExtend", DeleteTask)
+deleteTaskExtend.delete('./copy/build.gradle')
+
+println tasks.getByName('deleteTaskExtend').toString()
+
+
+ext {
+    outFile = file('./copy/out.txt')
+    if (!outFile?.exists()) {
+        outFile.createNewFile()
+    }
+}
+
+task outputTask {
+    outputs.file(outFile)
+    doLast {
+        outputs.files.singleFile.withWriter {
+            it.append('out write')
+        }
+        println('outputTask 执行结束')
+    }
+}
+
+task inputTask {
+    inputs.file('./copy/out.txt')
+    doLast {
+        println("out.txt内容：${inputs.files.singleFile.text}")
+        println('inputTask 执行结束')
+    }
+}
+
+//依赖的task没有依赖关系，执行顺序是随机的,必须指定依赖关系
+inputTask.dependsOn(outputTask)
+task inoutTask(dependsOn: [outputTask, inputTask]) {
+    doLast {
+        println('inoutTask 执行结束')
+    }
+}
+
+
+//apply from:'../custom_plugin.gradle'
+apply from: rootDir.path + '/custom_plugin.gradle'
+
+apply plugin: 'com.cwl.plugin'
+
+personInfo {
+    name = 'cwl'
+    age = 12
+}
+
+afterEvaluate {
+    project.android.applicationVariants.all { variant ->
+        println "**************************************\n"
+        println "${variant.name} ${variant.baseName}"
+        //AndroidArtifactVariant SigningConfig[ReadOnlySigningConfig]
+        variant.signingConfig?.with{
+            //?. 防止没配的报错
+            println "${name}--${getName()}"
+            println storeFile?.path
+            println storePassword
+            println keyAlias
+            println keyPassword
+            println storeType
+        }
+
+        //BaseVariant TaskProvider<MergeResources>
+        variant.mergeResourcesProvider?.with {
+            //得到task
+            println it.get()
+            println name
+            it.get().with{
+                println name+"--"+getPackageName()
+            }
+       }
+
+        println "**************************************\n"
+
+    }
+
+}
+
+println '===================================='
+configurations.all {
+    if (it.name in ['implementation','api','androidTestImplementation','testImplementation']){
+        println "${it.name}=====>"
+        it.getDependencies().each{
+            println "${it.getGroup()}:${it.getName()}:${it.getVersion()}"
+        }
+    }
+
+}
+println '==================================='

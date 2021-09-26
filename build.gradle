@@ -1,0 +1,90 @@
+import groovy.json.JsonSlurper
+
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    ext.kotlin_version = "1.5.20"
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:4.2.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter() // Warning: this repository is going to shut down soon
+    }
+}
+
+//默认stdout在 LogLevelQUIET上，改到LogLevel.WARN上
+logging.captureStandardOutput(LogLevel.WARN)
+logging.addStandardErrorListener(new StandardOutputListener() {
+    @Override
+    void onOutput(CharSequence charSequence) {
+        println('listen--->'+charSequence)
+    }
+})
+
+//slf4j.Logger
+logger.error('hello {}','error')
+
+println '*****************************'
+//TextResourceFactory
+def f1=resources.text.fromFile('./.gitignore')
+println f1.asString()
+
+task createTestFile{
+    def f=file('test.txt')
+    if(!f.exists()){
+        f.createNewFile()
+    }
+    outputs.file(f)
+    outputs.files.singleFile.write('mmmmwwwww')
+}
+
+def f2=resources.text.fromFile(createTestFile)
+println f2.asString()
+println '*****************************'
+
+
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+task execCmd{
+    def taskName = 'HelloPluginTask'
+//    def command = "./gradlew ${taskName} -Dorg.gradle.debug=true --no-daemon"
+
+    def out =new ByteArrayOutputStream()
+    def command = "ls -l"
+    try{
+        exec {
+            ExecSpec execSpec ->
+                executable 'bash'
+                //bash -c “cmd string”
+                args '-c',command
+                standardOutput(out)
+
+        }
+        println(out.toString())
+    }catch(e){
+
+    }
+}
+
+task parseJson{
+    def jsonStr='{"name":"cwl","age":28}'
+    def parsedJson = new JsonSlurper().parseText(jsonStr)
+    println parsedJson
+    println parsedJson.getClass()
+    println parsedJson.name
+}

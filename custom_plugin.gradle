@@ -1,0 +1,210 @@
+task generateDebugSourcesPre {
+    doLast {
+        println('generateDebugSourcesPre')
+    }
+}
+
+task generateDebugResourcesNxt {
+    doLast {
+        println('generateDebugResourcesNxt')
+    }
+}
+
+afterEvaluate {
+    //使用?. 配置了productFlavors 就找不到了
+
+    def generateDebugSources = tasks.findByName('generateDebugSources')
+    //generateDebugSources 依赖 generateDebugSourcesPre，generateDebugSourcesPre 在 generateDebugSources前面运行
+    generateDebugSources?.dependsOn(generateDebugSourcesPre)
+
+    def generateDebugResources = tasks.findByName('generateDebugResources')
+    //指定generateDebugResources 完成后执行generateDebugResourcesNxt
+    generateDebugResources?.finalizedBy(generateDebugResourcesNxt)
+
+    //mustRunAfter 安排执行先后关系,A.mustRunAfter(B) A执行不一定导致B执行（只有包含2个任务的时候才会）
+}
+
+//当 task 被加入到 TaskContainer 时的监听
+tasks.whenTaskAdded {
+//    println("task-->${it}")
+}
+
+
+task(taskX {
+    doLast {
+        println 'taskX'
+    }
+})
+
+task taskY {
+    doLast {
+        println 'taskY'
+    }
+}
+
+//groovy 支持变换顺序入参
+task('taskZ', dependsOn: [taskX, taskY]) {
+    doLast {
+        println 'taskZ'
+    }
+}
+
+class Animal {
+    def name
+    def age
+
+
+    @Override
+    public String toString() {
+        return "Animal{" +
+                "name=" + name +
+                ", age=" + age +
+                '}';
+    }
+}
+
+extensions.add('animal', Animal)
+
+animal {
+    name = 'dog'
+    age 10
+}
+
+task animalTest {
+    doLast {
+        println animal
+    }
+}
+
+//打印扩展的属性
+extensions.extraProperties.properties.each {
+//    println it.key+"---->"+it.value
+}
+
+println extensions.findByName('animal')
+
+class AndroidExt {
+    int compileSdkVersionExt
+    String buildToolsVersionExt
+
+    def defaultConfig = new DefaultConfigExt()
+
+    void defaultConfigExt(Action<DefaultConfigExt> action) {
+        action.execute(defaultConfig)
+    }
+
+    void defaultConfigExt(Closure<DefaultConfigExt> closure) {
+        org.gradle.util.ConfigureUtil.configure(closure, defaultConfig)
+    }
+
+}
+
+class DefaultConfigExt {
+    String applicationIdExt
+    int minSdkVersionExt
+}
+
+extensions.create('androidExt', AndroidExt)
+
+androidExt {
+    compileSdkVersionExt 30
+    buildToolsVersionExt '30.0.3'
+    //不能去掉=号
+    defaultConfigExt {
+        applicationIdExt = 'com.cwl.ext'
+        minSdkVersionExt = 17
+    }
+}
+
+task androidExtTask {
+    doLast {
+        println androidExt.compileSdkVersionExt
+        println androidExt.buildToolsVersionExt
+        println androidExt.defaultConfig.applicationIdExt
+        println androidExt.defaultConfig.minSdkVersionExt
+    }
+}
+
+class AndroidExt2 {
+    int compileSdkVersionExt
+    String buildToolsVersionExt
+
+    AndroidExt2() {
+        extensions.create('defaultConfigExt2', DefaultConfigExt)
+    }
+
+}
+
+extensions.create('androidExt2', AndroidExt2)
+
+androidExt2 {
+    compileSdkVersionExt 31
+    buildToolsVersionExt '31.0.3'
+    defaultConfigExt2 {
+        applicationIdExt 'com.cwl.ext2'
+        minSdkVersionExt 19
+    }
+}
+
+task androidExt2Task {
+    doLast {
+        println androidExt2.compileSdkVersionExt
+        println androidExt2.buildToolsVersionExt
+        println androidExt2.defaultConfigExt2.applicationIdExt
+        println androidExt2.defaultConfigExt2.minSdkVersionExt
+    }
+}
+
+
+class AndroidExt3 {
+    String name
+    int compileSdkVersionExt
+    String buildToolsVersionExt
+
+    AndroidExt3(String name) {
+        this.name = name
+//        extensions.create('defaultConfigExt2', DefaultConfigExt)
+    }
+    
+    //有方法配置里就可以不用=号，groovy语法
+
+    void compileSdkVersionExt(int compileSdkVersionExt){
+        this.compileSdkVersionExt = compileSdkVersionExt
+    }
+
+    void buildToolsVersionExt(String buildToolsVersionExt){
+        this.buildToolsVersionExt = buildToolsVersionExt
+    }
+
+}
+
+
+NamedDomainObjectContainer<AndroidExt3> container = project.container(AndroidExt3)
+//必须是add方法,create没有对应的
+project.extensions.add("androidExt2Named", container)
+
+androidExt2Named {
+    release {
+        compileSdkVersionExt 32
+//        defaultConfigExt2 {
+//            applicationIdExt 'com.cwl.ext2.release_named'
+//        }
+    }
+
+    debug {
+        compileSdkVersionExt 33
+//        defaultConfigExt2 {
+//            applicationIdExt 'com.cwl.ext2.debug_named'
+//        }
+    }
+}
+
+task androidExt2NamedTask{
+    doLast {
+        androidExt2Named.each{
+//            println "${it.name}:${it.compileSdkVersionExt}--${it.defaultConfigExt2.applicationIdExt}"
+            println "${it.name}:${it.compileSdkVersionExt}"
+        }
+    }
+}
+
