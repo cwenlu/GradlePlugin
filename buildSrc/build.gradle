@@ -1,0 +1,45 @@
+plugins {
+    id 'groovy'
+    id 'java-gradle-plugin'
+}
+
+repositories {
+    google()
+    mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    //Groovy DSL
+    implementation gradleApi()
+    //Gradle DSL
+    implementation localGroovy()
+
+    // Android DSL
+    implementation 'com.android.tools.build:gradle:4.2.2'
+}
+
+
+//指定好相关资源目录，实际上也可以不用指定，AndroidStudio 能够自动识别出来
+sourceSets {
+    main {
+        groovy {
+            srcDir 'src/main/groovy'
+        }
+
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}
+
+//gradlePlugin {
+//    plugins {
+//        greeting {
+//            // 插件id
+//            id = 'com.cwl.plugin'
+//            // 插件实现类
+//            implementationClass = 'com.cwl.lib.PluginTest'
+//        }
+//    }
+//}
